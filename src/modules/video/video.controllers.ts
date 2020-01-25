@@ -1,5 +1,16 @@
+/* 
+  Access available videos using getVideos()
+  on successful upload, store video details in VideoDB
+*/
 import express from "express";
-import { VideoDB, createThumbnail, IMAGE_PATH } from "../../utilities";
+import {
+  VideoDB,
+  createThumbnail,
+  IMAGE_PATH,
+  UPLOAD_PATH
+} from "../../utilities";
+import bunyan from "bunyan";
+const logger = bunyan.createLogger({ name: "videoController" });
 
 const getVideos = (
   req: express.Request,
@@ -7,17 +18,16 @@ const getVideos = (
   next: express.NextFunction
 ) => {
   try {
+    logger.info("request list of available videos ", VideoDB);
     res.status(200).json({
       result: VideoDB || {}
     });
     return next();
   } catch (e) {
-    console.log("error in fetching Videos list  ", e);
+    logger.error("error in fetching Videos list: ", e);
     return res.status(500).json(e);
   }
 };
-
-const fetchVideo = () => {};
 
 const uploadVideo = (
   req: express.Request,
@@ -26,27 +36,26 @@ const uploadVideo = (
 ) => {
   try {
     let file = req.file;
-    console.info("video loaded ", file);
-
     createThumbnail(file.filename).then(_success => {
       const savedVideoDetails = {
         id: file.filename,
         name: file.originalname,
         size: file.size,
-        path: file.path,
+        path: `${UPLOAD_PATH}\\${file.filename}`,
         encoding: file.encoding,
         mimetype: file.mimetype,
         details: req.body.details ? req.body.details : "",
         screenshot: `${IMAGE_PATH}\\${file.filename}.png`
       };
+      // save uploaded vidoe file in VideoDB
       VideoDB[file.filename] = savedVideoDetails;
-      res.send(savedVideoDetails);
+      logger.info("successfully uploaded a video file : ", savedVideoDetails);
+      res.send({ result: savedVideoDetails });
     });
-    //return next();
   } catch (err) {
-    console.log("error in uploading ", err);
+    logger.error("error in uploading video file : ", err);
     res.status(500).json(err);
   }
 };
 
-export { uploadVideo, fetchVideo, getVideos };
+export { uploadVideo, getVideos };
